@@ -1,55 +1,89 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
+from database import init_db, get_all_memos, get_memo, create_memo, update_memo, delete_memo
 
 app = Flask(__name__)
 
-@app.route('/')
-def hello():
-    return "Hello, World!"
+app.json.ensure_ascii = False
 
-@app.route('/about')
-def about():
-    return "これはメモアプリです"
+# アプリ起動時にDBを初期化
+init_db()
 
-@app.route('/goodbye')
-def goodbye():
-    return "さようなら、世界！"
+@app.route("/")
+def index():
+    """HTMLページを配信"""
+    return send_from_directory("static", "index.html")
 
-@app.route('/hello/<name>')
-def hello_name(name):
-    return f"こんにちは、{name}！"
 
-@app.route("/api/sample", methods=["GET"])
-def get_sample():
-    return "GETリクエストを受け取りました" 
+@app.route("/api/memos", methods=["GET"])
+def api_get_memos():
+    """全てのメモを取得する"""
+    memos = get_all_memos()
+    return jsonify(memos)
 
-@app.route("/api/sample", methods=["POST"])
-def create_sample():
-    return "POSTリクエストを受け取りました"
 
-@app.route("/api/fruits")
-def api_fruits():
-    fruits = [
-        {"id":1,"name":"りんご"},
-        {"id":2,"name":"バナナ"},
-        {"id":3,"name":"みかん"}
-    ]
-    return jsonify(fruits)
-
-@app.route("/api/echo", methods=["POST"])
-def api_echo():
-    data = request.get_json()
-    return jsonify({"received": data})
-
-@app.route("/api/create-sample", methods=["POST"])
-def create_sample_data():
+@app.route("/api/memos", methods=["POST"])
+def api_create_memo():
+    """新しいメモを作成する"""
     data = request.get_json()
 
-    if not data or "name" not in data:
-        return jsonify({"error": "name は必須です"}), 400
+    if not data:
+        return jsonify({"error": "リクエストボディが空です"}), 400
 
-    return jsonify({"message": f"{data['name']} が作成されました"}), 201
+    title = data.get("title")
+    body = data.get("body")
+
+    if not title or not body:
+        return jsonify({"error": "title と body は必須です"}), 400
+
+    memo_id = create_memo(title, body)
+    memo = get_memo(memo_id)
+    return jsonify(memo), 201
 
 
-if __name__ == '__main__':
+@app.route("/api/memos/<int:id>", methods=["GET"])
+def api_get_memo(id):
+    """指定されたIDのメモを取得する"""
+    memo = get_memo(id)
+
+    if not memo:
+        return jsonify({"error": "メモが見つかりません"}), 404
+
+    return jsonify(memo)
+
+
+@app.route("/api/memos/<int:id>", methods=["PUT"])
+def api_update_memo(id):
+    """指定されたIDのメモを更新する"""
+    memo = get_memo(id)
+    if not memo:
+        return jsonify({"error": "メモが見つかりません"}), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "リクエストボディが空です"}), 400
+
+    title = data.get("title")
+    body = data.get("body")
+
+    if not title or not body:
+        return jsonify({"error": "title と body は必須です"}), 400
+
+    update_memo(id, title, body)
+    updated_memo = get_memo(id)
+    return jsonify(updated_memo)
+
+
+@app.route("/api/memos/<int:id>", methods=["DELETE"])
+def api_delete_memo(id):
+    """指定されたIDのメモを削除する"""
+    memo = get_memo(id)
+    if not memo:
+        return jsonify({"error": "メモが見つかりません"}), 404
+
+    delete_memo(id)
+    return jsonify({"message": f"メモ (ID:{id}) を削除しました"})
+
+
+if __name__ == "__main__":
     app.run(debug=True)
-
