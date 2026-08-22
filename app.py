@@ -3,16 +3,12 @@ from database import init_db, get_all_memos, get_memo, create_memo, update_memo,
 
 app = Flask(__name__)
 
-app.json.ensure_ascii = False
-
 # アプリ起動時にDBを初期化
 init_db()
 
 @app.route("/")
 def index():
-    """HTMLページを配信"""
     return send_from_directory("static", "index.html")
-
 
 @app.route("/api/memos", methods=["GET"])
 def api_get_memos():
