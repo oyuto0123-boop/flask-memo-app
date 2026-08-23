@@ -5,3 +5,5 @@ venv_wsl/
 *.pem
 id_ed25519*
 Yota-1425*
+memo.db
+__pycache__/
