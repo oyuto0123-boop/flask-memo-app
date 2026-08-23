@@ -12,26 +12,33 @@ def index():
 
 @app.route("/api/memos", methods=["GET"])
 def api_get_memos():
-    """全てのメモを取得する"""
-    memos = get_all_memos()
+    """全てのメモを取得する（検索・カテゴリ絞り込み・ソート対応）"""
+    # 追加：クエリパラメータから検索キーワード・カテゴリ・並び順を取得
+    # 例: /api/memos?q=買い物&category=仕事&sort=created_at
+    q = request.args.get("q")
+    category = request.args.get("category")
+    sort = request.args.get("sort", "updated_at")
+
+    memos = get_all_memos(q=q, category=category, sort=sort)
     return jsonify(memos)
 
 
 @app.route("/api/memos", methods=["POST"])
 def api_create_memo():
     """新しいメモを作成する"""
-    data = request.get_json()
+    data = request.get_json(silent=True)  # JSONが空の場合にエラーを出さないようにする
 
     if not data:
         return jsonify({"error": "リクエストボディが空です"}), 400
 
     title = data.get("title")
     body = data.get("body")
+    category = data.get("category", "")  # 追加：カテゴリは任意項目（未指定なら空文字）
 
-    if not title or not body:
+    if not isinstance(title, str) or not isinstance(body, str) or not title.strip() or not body.strip():
         return jsonify({"error": "title と body は必須です"}), 400
 
-    memo_id = create_memo(title, body)
+    memo_id = create_memo(title, body, category)
     memo = get_memo(memo_id)
     return jsonify(memo), 201
 
@@ -54,18 +61,19 @@ def api_update_memo(id):
     if not memo:
         return jsonify({"error": "メモが見つかりません"}), 404
 
-    data = request.get_json()
+    data = request.get_json(silent=True)  # JSONが空の場合にエラーを出さないようにする
 
     if not data:
         return jsonify({"error": "リクエストボディが空です"}), 400
 
     title = data.get("title")
     body = data.get("body")
+    category = data.get("category", "")  # 追加：カテゴリは任意項目（未指定なら空文字）
 
-    if not title or not body:
+    if not isinstance(title, str) or not isinstance(body, str) or not title.strip() or not body.strip():
         return jsonify({"error": "title と body は必須です"}), 400
 
-    update_memo(id, title, body)
+    update_memo(id, title, body, category)
     updated_memo = get_memo(id)
     return jsonify(updated_memo)
 
@@ -83,3 +91,6 @@ def api_delete_memo(id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+#if __name__ == "__main__":
+ #   app.run(debug=True, host="0.0.0.0")
